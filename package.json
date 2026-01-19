@@ -6,6 +6,6 @@
     "install": "cd frontend && npm install"
   },
   "engines": {
-    "node": "22.x"
+    "node": "24.x"
   }
 }

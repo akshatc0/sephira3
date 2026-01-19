@@ -5,41 +5,73 @@ interface Message {
 
 interface MessageListProps {
   messages: Message[];
+  loading?: boolean;
 }
 
-export default function MessageList({ messages }: MessageListProps) {
+export default function MessageList({ messages, loading }: MessageListProps) {
   if (messages.length === 0) {
     return (
-      <div className="mb-6 p-6 text-center text-text-secondary">
-        <p>Start a conversation about sentiment data</p>
-        <p className="text-sm mt-2">
-          Try asking: &quot;Show me sentiment trends for France over the last 5 years&quot;
+      <div className="flex flex-col items-center justify-center h-full text-center p-8 opacity-60">
+        <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-6 ring-1 ring-white/10">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/80">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+          </svg>
+        </div>
+        <h3 className="text-xl font-medium text-text-primary mb-2">Start a Conversation</h3>
+        <p className="text-text-secondary max-w-sm mb-8 text-sm leading-relaxed">
+          Ask questions about global sentiment trends, compare countries, or visualize data over time.
         </p>
+        
+        <div className="grid gap-3 w-full max-w-sm">
+          {[
+            "Show sentiment trends for France",
+            "Compare Germany and Italy",
+            "Visualize US sentiment in 2023"
+          ].map((suggestion, i) => (
+            <div 
+              key={i}
+              className="px-4 py-3 bg-white/5 border border-white/5 rounded-xl text-sm text-text-secondary/80 text-left hover:bg-white/10 hover:border-white/10 hover:text-text-primary transition-all cursor-pointer select-none"
+            >
+              "{suggestion}"
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 mb-6 max-h-96 overflow-y-auto">
+    <div className="space-y-6">
       {messages.map((message, index) => (
         <div
           key={index}
           className={`flex ${
             message.role === "user" ? "justify-end" : "justify-start"
-          }`}
+          } animate-slide-up`}
         >
           <div
-            className={`max-w-[80%] p-4 rounded-card ${
+            className={`max-w-[85%] sm:max-w-[75%] p-5 rounded-2xl shadow-sm ${
               message.role === "user"
-                ? "bg-white/10 text-text-primary"
-                : "bg-background-secondary text-text-primary"
+                ? "bg-white text-black rounded-tr-sm"
+                : "bg-background-card-top border border-white/10 text-text-primary rounded-tl-sm backdrop-blur-sm"
             }`}
           >
-            <p className="whitespace-pre-wrap">{message.content}</p>
+            <p className="whitespace-pre-wrap text-[15px] leading-relaxed tracking-wide">
+              {message.content}
+            </p>
           </div>
         </div>
       ))}
+      
+      {loading && (
+        <div className="flex justify-start animate-fade-in">
+          <div className="bg-background-card-top border border-white/10 px-5 py-4 rounded-2xl rounded-tl-sm flex items-center gap-2">
+            <div className="w-2 h-2 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+            <div className="w-2 h-2 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+            <div className="w-2 h-2 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

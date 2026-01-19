@@ -42,9 +42,9 @@ def validate_date_range(start_date: Optional[str], end_date: Optional[str],
     Raises:
         ValueError: If dates are invalid or out of range
     """
-    if not start_date:
+    if not start_date or start_date.lower() == "default":
         start_date = data_start
-    if not end_date:
+    if not end_date or end_date.lower() == "default":
         end_date = data_end
     
     try:

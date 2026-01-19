@@ -3,36 +3,36 @@
 import { useState, useRef, useEffect } from "react";
 import { sendChatMessage, generateChart } from "@/lib/api";
 import type { ChatRequest, ChartRequest } from "@/lib/api";
-import Button from "./Button";
 import MessageList from "./MessageList";
 import ChartDisplay from "./ChartDisplay";
+import ClaudeChatInput from "@/components/ui/claude-style-chat-input";
+import { cn } from "@/lib/utils";
+import { BarChart3, Globe2, TrendingUp, Activity } from "lucide-react";
 
 export default function ChatInterface() {
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
-  const [input, setInput] = useState("");
   const [sessionId, setSessionId] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentChart, setCurrentChart] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Scroll to bottom on new message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, loading]);
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return;
+  const handleSend = async (message: string) => {
+    if (!message.trim() || loading) return;
 
-    const userMessage = input.trim();
-    setInput("");
     setError(null);
     setLoading(true);
 
     // Add user message to UI
-    setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
+    setMessages((prev) => [...prev, { role: "user", content: message }]);
 
     try {
-      // Build conversation history from messages
+      // Build conversation history
       const conversationHistory: Array<{ user: string; assistant: string }> = [];
       for (let i = 0; i < messages.length - 1; i++) {
         if (messages[i].role === "user" && messages[i + 1]?.role === "assistant") {
@@ -40,39 +40,36 @@ export default function ChatInterface() {
             user: messages[i].content,
             assistant: messages[i + 1].content,
           });
-          i++; // Skip the assistant message since we've processed it
+          i++; 
         }
       }
 
       const request: ChatRequest = {
-        message: userMessage,
+        message: message,
         session_id: sessionId,
         conversation_history: conversationHistory,
       };
 
       const response = await sendChatMessage(request);
 
-      // Update session ID
       if (response.session_id) {
         setSessionId(response.session_id);
       }
 
       // Add assistant response
-      // Backend now provides helpful messages even for errors, so always show the response
       if (response.response) {
         setMessages((prev) => [
           ...prev,
           { role: "assistant", content: response.response },
         ]);
       } else {
-        // Fallback only if response is completely empty
         setMessages((prev) => [
           ...prev,
           { role: "assistant", content: "I'm having trouble with that request. Could you try rephrasing your question?" },
         ]);
       }
 
-      // Handle chart request if needed
+      // Handle chart
       if (response.chart_request && response.chart_request.needs_chart) {
         try {
           const chartRequest: ChartRequest = {
@@ -88,38 +85,30 @@ export default function ChatInterface() {
           const chartResponse = await generateChart(chartRequest);
           setCurrentChart(chartResponse.base64_image);
         } catch (chartError) {
-          // Silently handle chart errors - don't show error message to user
           console.error("Chart generation error:", chartError);
-          // Chart generation failure is not critical - user still has the text response
         }
       }
       
-      // Clear any previous errors on successful response
       setError(null);
     } catch (err) {
-      // Only show error in UI if it's a network/connection issue
-      // Backend errors are already handled gracefully in the response
       const errorMessage = err instanceof Error ? err.message : "Connection error";
       
-      // Check if it's a network error
       if (errorMessage.includes("fetch") || errorMessage.includes("network") || errorMessage.includes("Failed to fetch")) {
-        setError("Unable to connect to the server. Please check your connection and try again.");
+        setError("Unable to connect to the server.");
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: "I'm having trouble connecting right now. Please check your internet connection and try again.",
+            content: "I'm having trouble connecting right now. Please check your internet connection.",
           },
         ]);
       } else {
-        // For other errors, don't show error message - backend should handle it gracefully
-        // Just log it and show a generic helpful message
         console.error("Chat error:", err);
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: "I'm having trouble processing that request. Could you try rephrasing your question?",
+            content: "I'm having trouble processing that request. Could you try rephrasing?",
           },
         ]);
       }
@@ -128,45 +117,78 @@ export default function ChatInterface() {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
+  // Determine Layout State
+  const isChatStarted = messages.length > 0;
 
   return (
-    <div className="card-gradient rounded-card p-6 max-w-4xl mx-auto">
-      <MessageList messages={messages} />
-      {currentChart && <ChartDisplay base64Image={currentChart} />}
+    <div className="flex flex-col h-full bg-background-primary/50 backdrop-blur-md rounded-3xl border border-white/5 shadow-2xl overflow-hidden relative">
       
-      {error && (
-        <div className="mb-4 p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400">
-          {error}
-        </div>
-      )}
-
-      <div className="flex gap-3 mt-4">
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Ask about sentiment data..."
-          className="flex-1 bg-background-secondary border border-text-secondary/30 rounded-button px-4 py-3 text-text-primary placeholder:text-text-secondary resize-none focus:outline-none focus:border-text-primary"
-          rows={3}
-          disabled={loading}
-        />
-        <Button
-          onClick={handleSend}
-          disabled={loading || !input.trim()}
-          primary
-        >
-          {loading ? "Sending..." : "Send"}
-        </Button>
+      {/* Messages Area */}
+      <div className={cn(
+          "flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-all duration-500",
+          isChatStarted ? "p-6 opacity-100" : "p-0 opacity-0 hidden"
+      )}>
+        <MessageList messages={messages} loading={loading} />
+        {currentChart && (
+            <div className="mt-6 animate-fade-in">
+                <ChartDisplay base64Image={currentChart} />
+            </div>
+        )}
+        {error && (
+          <div className="my-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm text-center">
+            {error}
+          </div>
+        )}
+        <div ref={messagesEndRef} />
       </div>
 
-      <div ref={messagesEndRef} />
+      {/* Greeting View (Centered when empty) */}
+      {!isChatStarted && (
+         <div className="absolute inset-0 flex flex-col items-center justify-center p-4 animate-fade-in z-0">
+            {/* Logo/Greeting */}
+            <div className="w-full max-w-3xl mb-8 text-center">
+                <h1 className="text-3xl font-medium text-text-primary tracking-tight font-sans">
+                    Sephira 0.0.1
+                </h1>
+            </div>
+
+            {/* Centered Input */}
+            <div className="w-full max-w-2xl mb-8">
+                <ClaudeChatInput onSendMessage={handleSend} isLoading={loading} />
+            </div>
+
+            {/* Suggestions */}
+            <div className="flex flex-wrap justify-center gap-2 max-w-2xl mx-auto px-4">
+                {[
+                    { text: "Analyze Sentiment", icon: BarChart3, prompt: "Analyze global sentiment trends" },
+                    { text: "Compare Regions", icon: Globe2, prompt: "Compare sentiment between US and China" },
+                    { text: "Show Trends", icon: TrendingUp, prompt: "Show me the latest sentiment trends" },
+                    { text: "Explain Volatility", icon: Activity, prompt: "Explain recent volatility in sentiment" }
+                ].map((item, i) => (
+                    <button 
+                        key={i}
+                        onClick={() => handleSend(item.prompt)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-secondary bg-transparent border border-white/10 rounded-full hover:bg-white/10 hover:text-text-primary transition-colors duration-150"
+                    >
+                        <item.icon className="w-4 h-4" />
+                        {item.text}
+                    </button>
+                ))}
+            </div>
+         </div>
+      )}
+
+      {/* Fixed Input Area (Only when chat started) */}
+      {isChatStarted && (
+        <div className="p-4 bg-background-card-bottom/90 backdrop-blur-xl border-t border-white/5 z-10">
+           <div className="max-w-3xl mx-auto w-full">
+               <ClaudeChatInput onSendMessage={handleSend} isLoading={loading} />
+           </div>
+           <p className="text-center text-xs text-text-secondary/30 mt-3 font-light">
+             AI generated responses may vary.
+           </p>
+        </div>
+      )}
     </div>
   );
 }
-

@@ -1,12 +1,52 @@
 @import "tailwindcss";
 
+@theme inline {
+  --color-bg-0: var(--bg-0);
+  --color-bg-000: var(--bg-000);
+  --color-bg-100: var(--bg-100);
+  --color-bg-200: var(--bg-200);
+  --color-bg-300: var(--bg-300);
+  --color-text-100: var(--text-100);
+  --color-text-200: var(--text-200);
+  --color-text-300: var(--text-300);
+  --color-text-400: var(--text-400);
+  --color-text-500: var(--text-500);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --font-serif: "Source Serif 4", Georgia, serif;
+  --font-sans: "Inter", "Onest", system-ui, sans-serif;
+  --shadow-input: 0 1px 2px -1px rgba(0, 0, 0, 0.08), 0 2px 8px -2px rgba(0, 0, 0, 0.04);
+  --shadow-input-hover: 0 1px 2px -1px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+  --shadow-input-focus: 0 0 0 2px rgba(99, 102, 241, 0.2), 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+}
+
 :root {
+  /* Sephira Dark Theme Mapping */
   --background-primary: #0A0D1C;
   --background-secondary: #0F152F;
   --background-card-top: #121834;
   --background-card-bottom: #090D20;
   --text-primary: #FFFFFF;
   --text-secondary: rgba(255, 255, 255, 0.62);
+
+  /* New Variables Mapped to Sephira */
+  --bg-0: #0A0D1C;
+  --bg-000: #0A0D1C;
+  --bg-100: #121834;
+  --bg-200: #0F152F;
+  --bg-300: #1E293B; /* Slightly lighter for borders/inputs */
+  
+  --text-100: #FFFFFF;
+  --text-200: rgba(255, 255, 255, 0.9);
+  --text-300: rgba(255, 255, 255, 0.62);
+  --text-400: rgba(255, 255, 255, 0.45);
+  --text-500: rgba(255, 255, 255, 0.3);
+
+  --accent: #6366f1; /* Indigo from Landing Page */
+  --accent-hover: #4f46e5;
+  
+  --radius: 0.5rem;
+  --ease-silk: cubic-bezier(0.2, 0.0, 0, 1.0);
 }
 
 * {
@@ -16,8 +56,8 @@
 }
 
 body {
-  background: var(--background-primary);
-  color: var(--text-primary);
+  background: var(--bg-0);
+  color: var(--text-100);
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -27,7 +67,24 @@ body {
 .card-gradient {
   background: linear-gradient(
     to bottom,
-    var(--background-card-top),
+    var(--bg-100),
     var(--background-card-bottom)
   );
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s var(--ease-silk) forwards;
 }

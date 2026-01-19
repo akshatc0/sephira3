@@ -85,9 +85,13 @@ class ChartService:
             chart_filename = self._generate_filename(countries, date_range)
             chart_path = self.output_dir / chart_filename
             
-            fig.savefig(chart_path, dpi=self.dpi, bbox_inches='tight',
-                       facecolor=Config.COLOR_BG_PRIMARY,
-                       edgecolor='none')
+            try:
+                fig.savefig(chart_path, dpi=self.dpi, bbox_inches='tight',
+                           facecolor=Config.COLOR_BG_PRIMARY,
+                           edgecolor='none')
+            except Exception as e:
+                logger.warning(f"Could not save chart to disk (likely read-only filesystem): {e}")
+                # Continue to generate base64 which is what the frontend needs
             
             # Generate base64 for API response
             buffer = io.BytesIO()

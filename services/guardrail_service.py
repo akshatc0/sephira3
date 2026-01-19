@@ -28,11 +28,11 @@ class GuardrailService:
         
         # Reverse engineering patterns
         self.reverse_engineering_patterns = [
-            r'\b(how|what|which|where)\s+(is|are|was|were)\s+(data|sentiment)\s+(collected|gathered|obtained|sourced)',
+            r'\b(how|what|which|where)\s+(is|are|was|were)\s+(?:the|this|your|our|all)?\s*(data|sentiment)\s+(collected|gathered|obtained|sourced|generated)',
             r'\b(method|methodology|algorithm|formula|calculation|computation)\s+(for|of|used|to)',
-            r'\b(data|sentiment)\s+(source|provider|origin|collection)',
+            r'\b(data|sentiment)\s+(source|provider|origin|collection|pipeline)',
             r'\b(api|endpoint|service)\s+(that|which|used|for)',
-            r'\b(underlying|proprietary|internal|secret)\s+(method|algorithm|formula|process)',
+            r'\b(underlying|proprietary|internal|secret)\s+(method|algorithm|formula|process|data)',
             r'\b(back.?engineer|reverse.?engineer|figure.?out)\s+(how|what|the)',
             r'\b(derive|calculate|compute)\s+(from|using|with)\s+(source|raw|original)',
         ]

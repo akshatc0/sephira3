@@ -23,10 +23,11 @@ class Config:
     OPENAI_TEMPERATURE: float = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
     
     # Data Configuration
-    DATA_CSV_PATH: Path = Path(os.getenv("DATA_CSV_PATH", "all_indexes_beta.csv"))
+    DATA_CSV_PATH: Path = Path(__file__).parent / os.getenv("DATA_CSV_PATH", "all_indexes_beta.csv")
     
     # Chart Configuration
-    CHART_OUTPUT_DIR: Path = Path(os.getenv("CHART_OUTPUT_DIR", "static/charts"))
+    # Use /tmp for serverless environments (read-only filesystem elsewhere)
+    CHART_OUTPUT_DIR: Path = Path("/tmp/charts") if os.path.exists("/tmp") else Path(os.getenv("CHART_OUTPUT_DIR", "static/charts"))
     CHART_DPI: int = int(os.getenv("CHART_DPI", "300"))
     CHART_FORMAT: str = os.getenv("CHART_FORMAT", "png")
     

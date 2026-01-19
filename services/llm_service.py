@@ -1,8 +1,3 @@
-"""
-LLM service for OpenAI API integration.
-Handles chat interactions, query processing, and response generation.
-"""
-
 import openai
 from typing import List, Dict, Optional, Tuple, Any
 import json
@@ -15,26 +10,18 @@ from utils.prompt_templates import (
     get_data_query_prompt,
     sanitize_response
 )
+from utils.query_parser import QueryParser
 from services.guardrail_service import GuardrailService
 
 logger = logging.getLogger(__name__)
 
 
 class LLMService:
-    """Service for OpenAI API interactions."""
     
     def __init__(self, data_service: Any, guardrail_service: GuardrailService):
-        """
-        Initialize LLM service.
-        
-        Args:
-            data_service: DataService instance
-            guardrail_service: GuardrailService instance
-        """
         self.data_service = data_service
         self.guardrail_service = guardrail_service
         
-        # Initialize OpenAI client
         if not Config.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY not configured")
         
@@ -42,26 +29,15 @@ class LLMService:
         self.model = Config.OPENAI_MODEL
         self.temperature = Config.OPENAI_TEMPERATURE
         
-        # Get system prompt
         countries = data_service.get_countries()
         date_range = data_service.get_date_range()
         self.system_prompt = get_system_prompt(countries, date_range)
+        
+        self.query_parser = QueryParser(countries, date_range)
     
     def process_query(self, user_query: str, conversation_history: Optional[List[Dict]] = None,
                      session_id: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Process a user query and return response with optional chart request.
-        
-        Args:
-            user_query: User's query string
-            conversation_history: Previous conversation turns
-            session_id: Session identifier
-        
-        Returns:
-            Dict with 'response', 'chart_request', and 'session_id'
-        """
         try:
-            # Check guardrails first
             is_allowed, rejection_reason, category = self.guardrail_service.validate_query(user_query)
             
             if not is_allowed:
@@ -73,26 +49,32 @@ class LLMService:
                     "block_category": category
                 }
             
-            # Determine if chart is needed
             chart_request = self._detect_chart_request(user_query, conversation_history)
             
-            # Prepare conversation for LLM
-            messages = self._prepare_messages(user_query, conversation_history)
+            # Extract countries and date range from query
+            parsed_query = self.query_parser.parse_query(user_query)
+            countries = parsed_query["countries"]
+            date_range = parsed_query["date_range"]
             
-            # Call OpenAI API
-            # IMPORTANT: To prevent OpenAI from using data for training:
-            # 1. Configure data exclusion at organization level in OpenAI dashboard
-            #    (Settings > Organization > Data usage policy > Disable training)
-            # 2. System prompts are already configured to limit data exposure
-            # 3. Only aggregated/summarized data is sent, not raw CSV data
-            # 4. Verify organization settings are configured correctly
+            # Get actual data for the query
+            data_summary = ""
+            if countries:
+                data_summary = self.data_service.get_data_summary(
+                    countries,
+                    date_range.get("start"),
+                    date_range.get("end")
+                )
+            else:
+                data_summary = self.get_data_summary_for_query(user_query)
+            
+            messages = self._prepare_messages(user_query, conversation_history, data_summary)
+            
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 temperature=self.temperature
             )
             
-            # Extract response text
             if not response.choices or len(response.choices) == 0:
                 raise ValueError("OpenAI API returned no choices")
             
@@ -100,11 +82,9 @@ class LLMService:
             if llm_response is None:
                 raise ValueError("OpenAI API returned empty content")
             
-            # Sanitize response
             sanitized_response = sanitize_response(llm_response)
             sanitized_response = self.guardrail_service.sanitize_response(sanitized_response)
             
-            # If chart was requested, try to extract chart parameters from response
             if chart_request and chart_request.get("needs_chart"):
                 chart_params = self._extract_chart_parameters(user_query, sanitized_response)
                 if chart_params:
@@ -127,7 +107,6 @@ class LLMService:
             }
         except openai.APIError as e:
             logger.error(f"OpenAI API error: {e}")
-            # Provide more helpful error messages based on error type
             error_msg = str(e).lower()
             if "authentication" in error_msg or "invalid" in error_msg:
                 response_msg = "I'm having trouble connecting to the service. Please check your configuration."
@@ -136,7 +115,6 @@ class LLMService:
             elif "quota" in error_msg or "billing" in error_msg:
                 response_msg = "Service quota exceeded. Please try again later."
             else:
-                # For other API errors, provide a helpful but non-alarming message
                 response_msg = "I'm having trouble processing that request right now. Could you try rephrasing your question?"
             return {
                 "response": response_msg,
@@ -146,7 +124,6 @@ class LLMService:
             }
         except Exception as e:
             logger.error(f"Error processing query: {e}")
-            # Provide a helpful message without alarming the user
             return {
                 "response": "I'm having trouble with that request. Could you try rephrasing your question or asking something else?",
                 "chart_request": None,
@@ -156,16 +133,6 @@ class LLMService:
     
     def _detect_chart_request(self, user_query: str, 
                              conversation_history: Optional[List[Dict]]) -> Optional[Dict[str, Any]]:
-        """
-        Detect if user query requires a chart.
-        
-        Args:
-            user_query: User's query
-            conversation_history: Previous conversation
-        
-        Returns:
-            Dict with chart request info or None
-        """
         chart_keywords = [
             'chart', 'graph', 'plot', 'visualize', 'visualization',
             'show me', 'display', 'create a chart', 'make a graph'
@@ -176,18 +143,18 @@ class LLMService:
         needs_chart = any(keyword in query_lower for keyword in chart_keywords)
         
         if needs_chart:
-            # Use LLM to extract chart parameters
             prompt = get_chart_request_prompt(user_query, conversation_history)
             
             try:
+                # Use cheaper model for structured extraction
                 response = self.client.chat.completions.create(
-                    model="gpt-3.5-turbo",  # Use cheaper model for structured extraction
+                    model="gpt-3.5-turbo",
                     messages=[
                         {"role": "system", "content": "You are a chart parameter extraction assistant. Respond only with valid JSON."},
                         {"role": "user", "content": prompt}
                     ],
                     temperature=0.3,
-                    response_format={"type": "json_object"}  # Force JSON response
+                    response_format={"type": "json_object"}
                 )
                 
                 if not response.choices or len(response.choices) == 0:
@@ -204,76 +171,55 @@ class LLMService:
                 
             except Exception as e:
                 logger.warning(f"Error extracting chart parameters: {e}")
-                # Fallback: return basic chart request
                 return {"needs_chart": True}
         
         return None
     
     def _extract_chart_parameters(self, user_query: str, llm_response: str) -> Optional[Dict[str, Any]]:
-        """
-        Extract chart parameters from user query or LLM response.
-        
-        Args:
-            user_query: Original user query
-            llm_response: LLM's response
-        
-        Returns:
-            Dict with chart parameters or None
-        """
-        # Simple extraction - in production, use more sophisticated NLP
-        # For now, return None to let the API endpoint handle parameter extraction
         return None
     
     def _prepare_messages(self, user_query: str, 
-                         conversation_history: Optional[List[Dict]]) -> List[Dict[str, str]]:
-        """
-        Prepare messages for OpenAI API.
-        
-        Args:
-            user_query: Current user query
-            conversation_history: Previous conversation turns
-        
-        Returns:
-            List of message dicts for OpenAI API
-        """
+                         conversation_history: Optional[List[Dict]],
+                         data_summary: str = "") -> List[Dict[str, str]]:
         messages = [
             {"role": "system", "content": self.system_prompt}
         ]
         
-        # Add conversation history if available
+        # Add conversation history (last 10 turns to avoid token limits)
         if conversation_history:
-            for turn in conversation_history[-10:]:  # Last 10 turns to avoid token limits
+            for turn in conversation_history[-10:]:
                 if turn.get("user"):
                     messages.append({"role": "user", "content": turn["user"]})
                 if turn.get("assistant"):
                     messages.append({"role": "assistant", "content": turn["assistant"]})
         
-        # Add current query
-        messages.append({"role": "user", "content": user_query})
+        user_message = user_query
+        
+        # Include actual data in user message for LLM context
+        if data_summary:
+            user_message = f"""Based on the following actual data from the sentiment dataset, please answer the user's query:
+
+ACTUAL DATA:
+{data_summary}
+
+USER QUERY: {user_query}
+
+Please provide an accurate analysis based on the actual data provided above. Reference specific values, trends, and patterns from the data when answering."""
+        
+        messages.append({"role": "user", "content": user_message})
         
         return messages
     
     def get_data_summary_for_query(self, query: str) -> str:
-        """
-        Get relevant data summary for a query.
+        parsed_query = self.query_parser.parse_query(query)
+        countries = parsed_query["countries"]
+        date_range = parsed_query["date_range"]
         
-        Args:
-            query: User query
+        if not countries:
+            return "No specific countries mentioned in the query. Please specify which countries you'd like to analyze."
         
-        Returns:
-            Data summary string for LLM context
-        """
-        # Simple extraction - extract country names from query
-        # In production, use NLP to better extract entities
-        countries = self.data_service.get_countries()
-        mentioned_countries = [
-            country for country in countries
-            if country.lower() in query.lower()
-        ]
-        
-        if not mentioned_countries:
-            # Use default countries or ask for clarification
-            mentioned_countries = countries[:3]  # Default to first 3
-        
-        return self.data_service.get_data_summary(mentioned_countries)
-
+        return self.data_service.get_data_summary(
+            countries,
+            date_range.get("start"),
+            date_range.get("end")
+        )

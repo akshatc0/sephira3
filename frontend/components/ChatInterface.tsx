@@ -121,44 +121,59 @@ export default function ChatInterface() {
   const isChatStarted = messages.length > 0;
 
   return (
-    <div className="flex flex-col h-full bg-background-primary/50 backdrop-blur-md rounded-3xl border border-white/5 shadow-2xl overflow-hidden relative">
+    <div className="flex flex-col h-full rounded-[20px] border border-white/10 overflow-hidden relative" style={{ 
+      background: 'linear-gradient(to bottom, #121834, #090D20)',
+      fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif'
+    }}>
       
       {/* Messages Area */}
       <div className={cn(
           "flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-all duration-500",
-          isChatStarted ? "p-6 opacity-100" : "p-0 opacity-0 hidden"
+          isChatStarted ? "p-10 md:p-12 opacity-100" : "p-0 opacity-0 hidden"
       )}>
-        <MessageList messages={messages} loading={loading} />
-        {currentChart && (
-            <div className="mt-6 animate-fade-in">
-                <ChartDisplay base64Image={currentChart} />
+        <div className="max-w-4xl mx-auto">
+          <MessageList messages={messages} loading={loading} />
+          {currentChart && (
+              <div className="mt-8 animate-fade-in">
+                  <ChartDisplay base64Image={currentChart} />
+              </div>
+          )}
+          {error && (
+            <div className="my-6 p-4 border border-red-500/20 rounded-[20px] text-red-400 text-sm text-center" style={{ 
+              background: 'linear-gradient(to bottom, #121834, #090D20)',
+              fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif'
+            }}>
+              {error}
             </div>
-        )}
-        {error && (
-          <div className="my-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm text-center">
-            {error}
-          </div>
-        )}
+          )}
+        </div>
         <div ref={messagesEndRef} />
       </div>
 
       {/* Greeting View (Centered when empty) */}
       {!isChatStarted && (
-         <div className="absolute inset-0 flex flex-col items-center justify-center p-4 animate-fade-in z-0">
+         <div className="absolute inset-0 flex flex-col items-center justify-center p-8 md:p-12 animate-fade-in z-0">
             {/* Logo/Greeting */}
-            <div className="w-full max-w-3xl mb-8 text-center">
-                <h1 className="text-3xl font-medium text-text-primary tracking-tight font-sans">
+            <div className="w-full max-w-3xl mb-16 md:mb-20 text-center">
+                <h1 className="text-4xl md:text-5xl font-medium text-white tracking-tight mb-2" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
                     Sephira 0.0.1
                 </h1>
             </div>
 
             {/* Centered Input */}
-            <div className="w-full max-w-2xl mb-8">
+            <div className="w-full max-w-2xl mb-8 md:mb-10">
                 <ClaudeChatInput onSendMessage={handleSend} isLoading={loading} />
             </div>
 
+            {/* Info Text */}
+            <div className="w-full max-w-2xl mb-12 md:mb-14 text-center">
+                <p className="text-sm font-light" style={{ color: 'rgba(255, 255, 255, 0.62)', fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
+                    AI-generated insights based on 20,362 rows of sentiment data.
+                </p>
+            </div>
+
             {/* Suggestions */}
-            <div className="flex flex-wrap justify-center gap-2 max-w-2xl mx-auto px-4">
+            <div className="flex flex-wrap justify-center gap-4 max-w-2xl mx-auto px-4">
                 {[
                     { text: "Analyze Sentiment", icon: BarChart3, prompt: "Analyze global sentiment trends" },
                     { text: "Compare Regions", icon: Globe2, prompt: "Compare sentiment between US and China" },
@@ -168,7 +183,8 @@ export default function ChatInterface() {
                     <button 
                         key={i}
                         onClick={() => handleSend(item.prompt)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-secondary bg-transparent border border-white/10 rounded-full hover:bg-white/10 hover:text-text-primary transition-colors duration-150"
+                        className="inline-flex items-center gap-2.5 px-5 py-2.5 text-sm text-white bg-transparent border border-white/20 rounded-full hover:bg-white/10 hover:border-white/30 transition-all duration-200"
+                        style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}
                     >
                         <item.icon className="w-4 h-4" />
                         {item.text}
@@ -180,11 +196,11 @@ export default function ChatInterface() {
 
       {/* Fixed Input Area (Only when chat started) */}
       {isChatStarted && (
-        <div className="p-4 bg-background-card-bottom/90 backdrop-blur-xl border-t border-white/5 z-10">
+        <div className="p-8 border-t border-white/10 z-10" style={{ background: '#090D20' }}>
            <div className="max-w-3xl mx-auto w-full">
                <ClaudeChatInput onSendMessage={handleSend} isLoading={loading} />
            </div>
-           <p className="text-center text-xs text-text-secondary/30 mt-3 font-light">
+           <p className="text-center text-xs mt-6 font-light" style={{ color: 'rgba(255, 255, 255, 0.3)', fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
              AI generated responses may vary.
            </p>
         </div>

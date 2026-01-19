@@ -38,36 +38,38 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({ onSendMessage,
     const hasContent = message.trim().length > 0;
 
     return (
-        <div className="relative w-full max-w-2xl mx-auto transition-all duration-300 font-sans">
+        <div className="relative w-full max-w-2xl mx-auto transition-all duration-300" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
             {/* Main Container */}
             <div className={`
-                flex flex-col mx-2 md:mx-0 items-stretch transition-all duration-200 relative z-10 rounded-2xl cursor-text border border-bg-300 
-                shadow-[0_0_15px_rgba(0,0,0,0.08)] hover:shadow-[0_0_20px_rgba(0,0,0,0.12)]
-                focus-within:shadow-[0_0_25px_rgba(0,0,0,0.15)] focus-within:border-accent/50
-                bg-bg-100 font-sans antialiased
-            `}>
-                <div className="flex flex-col px-3 pt-3 pb-2 gap-2">
+                flex flex-col items-stretch transition-all duration-200 relative z-10 rounded-[20px] cursor-text border border-white/10 
+                hover:border-white/20 focus-within:border-white/30
+            `} style={{ background: 'linear-gradient(to bottom, #121834, #090D20)' }}>
+                <div className="flex flex-col px-5 pt-5 pb-4 gap-3">
                     {/* Input Area */}
-                    <div className="relative mb-1">
-                        <div className="max-h-96 w-full overflow-y-auto custom-scrollbar font-sans break-words transition-opacity duration-200 min-h-[2.5rem] pl-1">
+                    <div className="relative mb-2">
+                        <div className="max-h-96 w-full overflow-y-auto custom-scrollbar font-sans break-words transition-opacity duration-200 min-h-[3rem] pl-1">
                             <textarea
                                 ref={textareaRef}
                                 value={message}
                                 onChange={(e) => setMessage(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 placeholder="Ask Sephira about global sentiment..."
-                                className="w-full bg-transparent border-0 outline-none text-text-100 text-[16px] placeholder:text-text-400 resize-none overflow-hidden py-0 leading-relaxed block font-normal antialiased"
+                                className="w-full bg-transparent border-0 outline-none text-[15px] md:text-[16px] resize-none overflow-hidden py-3 leading-relaxed block font-normal antialiased placeholder:text-white/45"
                                 rows={1}
                                 autoFocus
-                                style={{ minHeight: '1.5em' }}
+                                style={{ 
+                                    minHeight: '1.5em',
+                                    color: '#FFFFFF',
+                                    fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif'
+                                }}
                                 disabled={isLoading}
                             />
                         </div>
                     </div>
 
                     {/* Action Bar */}
-                    <div className="flex gap-2 w-full items-center justify-between">
-                        <div className="text-xs text-text-400 pl-1">
+                    <div className="flex gap-3 w-full items-center justify-between pt-1">
+                        <div className="text-xs pl-1" style={{ color: 'rgba(255, 255, 255, 0.45)' }}>
                             {/* Optional: Add hint or status here */}
                         </div>
 
@@ -77,11 +79,12 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({ onSendMessage,
                                 onClick={handleSend}
                                 disabled={!hasContent || isLoading}
                                 className={cn(
-                                    "inline-flex items-center justify-center relative shrink-0 transition-all duration-200 h-8 w-8 rounded-lg",
+                                    "inline-flex items-center justify-center relative shrink-0 transition-all duration-200 h-9 w-9",
                                     hasContent && !isLoading
-                                        ? "bg-accent text-white hover:bg-accent-hover shadow-md scale-100"
-                                        : "bg-bg-300 text-text-400 cursor-not-allowed scale-95 opacity-50"
+                                        ? "bg-white text-black hover:bg-white/90 shadow-lg hover:shadow-xl scale-100 hover:scale-105"
+                                        : "bg-white/20 text-white/40 cursor-not-allowed scale-95 opacity-50"
                                 )}
+                                style={{ borderRadius: '14px', fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}
                                 type="button"
                                 aria-label="Send message"
                             >
@@ -96,11 +99,6 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({ onSendMessage,
                 </div>
             </div>
 
-            <div className="text-center mt-4">
-                <p className="text-xs text-text-500">
-                    AI-generated insights based on 20,362 rows of sentiment data.
-                </p>
-            </div>
         </div>
     );
 };

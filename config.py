@@ -9,16 +9,31 @@ from typing import Optional
 
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    from pathlib import Path
+    env_path = Path(__file__).parent / '.env'
+    if env_path.exists():
+        load_dotenv(dotenv_path=env_path, override=True)
 except ImportError:
     pass
+
+
+def _get_env_var(key: str, default: str = "") -> str:
+    try:
+        from dotenv import load_dotenv
+        from pathlib import Path
+        env_path = Path(__file__).parent / '.env'
+        if env_path.exists():
+            load_dotenv(dotenv_path=env_path, override=True)
+    except ImportError:
+        pass
+    return os.getenv(key, default)
 
 
 class Config:
     """Application configuration loaded from environment variables."""
     
     # OpenAI API Configuration
-    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_API_KEY: str = _get_env_var("OPENAI_API_KEY", "")
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4")
     OPENAI_TEMPERATURE: float = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
     

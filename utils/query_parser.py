@@ -8,6 +8,27 @@ logger = logging.getLogger(__name__)
 
 class QueryParser:
     
+    # Common aliases for country names
+    COUNTRY_ALIASES = {
+        "us": "United States",
+        "usa": "United States",
+        "america": "United States",
+        "u.s.": "United States",
+        "u.s.a.": "United States",
+        "uk": "United Kingdom",
+        "britain": "United Kingdom",
+        "great britain": "United Kingdom",
+        "england": "United Kingdom",
+        "korea": "South Korea",
+        "south africa": "South Africa",
+        "sa": "South Africa",
+        "nz": "New Zealand",
+        "czech republic": "Czechia",
+        "czech": "Czechia",
+        "holland": "Netherlands",
+        "the netherlands": "Netherlands",
+    }
+    
     def __init__(self, available_countries: List[str], date_range: Tuple[str, str]):
         self.available_countries = available_countries
         self.date_range = date_range
@@ -18,12 +39,25 @@ class QueryParser:
         for country in available_countries:
             self.country_map[country.lower()] = country
             self.country_map[country.lower().replace(' ', '')] = country
+        
+        # Add aliases that map to actual country names in dataset
+        for alias, full_name in self.COUNTRY_ALIASES.items():
+            if full_name in available_countries:
+                self.country_map[alias] = full_name
     
     def extract_countries(self, query: str) -> List[str]:
         query_lower = query.lower()
         mentioned = []
         
-        # Use word boundaries to avoid partial matches
+        # First check aliases (higher priority for common abbreviations)
+        for alias, full_name in self.COUNTRY_ALIASES.items():
+            if full_name in self.available_countries:
+                pattern = r'\b' + re.escape(alias) + r'\b'
+                if re.search(pattern, query_lower):
+                    if full_name not in mentioned:
+                        mentioned.append(full_name)
+        
+        # Then check full country names
         for country in self.available_countries:
             country_lower = country.lower()
             pattern = r'\b' + re.escape(country_lower) + r'\b'

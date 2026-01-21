@@ -26,7 +26,14 @@ def _get_env_var(key: str, default: str = "") -> str:
             load_dotenv(dotenv_path=env_path, override=True)
     except ImportError:
         pass
-    return os.getenv(key, default)
+    value = os.getenv(key, default)
+    # #region agent log
+    if key == "OPENAI_API_KEY":
+        import json
+        with open("/Users/tanayj/sephira3/.cursor/debug.log", "a") as f:
+            f.write(json.dumps({"location":"config.py:_get_env_var","message":"API key loaded","data":{"key_length":len(value),"key_prefix":value[:20] if len(value)>20 else value,"key_suffix":value[-10:] if len(value)>10 else value},"timestamp":__import__('time').time()*1000,"sessionId":"debug-session","hypothesisId":"H1"})+"\n")
+    # #endregion
+    return value
 
 
 class Config:

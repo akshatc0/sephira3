@@ -22,6 +22,12 @@ class LLMService:
         self.data_service = data_service
         self.guardrail_service = guardrail_service
         
+        # #region agent log
+        import json, time
+        with open("/Users/tanayj/sephira3/.cursor/debug.log", "a") as f:
+            f.write(json.dumps({"location":"llm_service.py:__init__","message":"LLMService init","data":{"key_length":len(Config.OPENAI_API_KEY),"key_prefix":Config.OPENAI_API_KEY[:20] if len(Config.OPENAI_API_KEY)>20 else Config.OPENAI_API_KEY,"has_key":bool(Config.OPENAI_API_KEY)},"timestamp":time.time()*1000,"sessionId":"debug-session","hypothesisId":"H2"})+"\n")
+        # #endregion
+        
         if not Config.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY not configured")
         
@@ -69,11 +75,20 @@ class LLMService:
             
             messages = self._prepare_messages(user_query, conversation_history, data_summary)
             
+            # #region agent log
+            import json, time
+            with open("/Users/tanayj/sephira3/.cursor/debug.log", "a") as f:
+                f.write(json.dumps({"location":"llm_service.py:process_query:before_api","message":"About to call OpenAI","data":{"model":self.model,"client_key_len":len(self.client.api_key) if hasattr(self.client,'api_key') and self.client.api_key else 0,"msg_count":len(messages)},"timestamp":time.time()*1000,"sessionId":"debug-session","hypothesisId":"H3"})+"\n")
+            # #endregion
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 temperature=self.temperature
             )
+            # #region agent log
+            with open("/Users/tanayj/sephira3/.cursor/debug.log", "a") as f:
+                f.write(json.dumps({"location":"llm_service.py:process_query:after_api","message":"OpenAI call succeeded","data":{"has_choices":bool(response.choices),"choice_count":len(response.choices) if response.choices else 0},"timestamp":time.time()*1000,"sessionId":"debug-session","hypothesisId":"H3"})+"\n")
+            # #endregion
             
             if not response.choices or len(response.choices) == 0:
                 raise ValueError("OpenAI API returned no choices")
@@ -107,6 +122,11 @@ class LLMService:
             }
         except openai.APIError as e:
             logger.error(f"OpenAI API error: {e}")
+            # #region agent log
+            import json, time
+            with open("/Users/tanayj/sephira3/.cursor/debug.log", "a") as f:
+                f.write(json.dumps({"location":"llm_service.py:process_query:APIError","message":"OpenAI API error caught","data":{"error_type":type(e).__name__,"error_str":str(e)[:200],"client_key_len":len(self.client.api_key) if hasattr(self.client,'api_key') and self.client.api_key else 0},"timestamp":time.time()*1000,"sessionId":"debug-session","hypothesisId":"H3"})+"\n")
+            # #endregion
             error_msg = str(e).lower()
             if "authentication" in error_msg or "invalid" in error_msg:
                 response_msg = "I'm having trouble connecting to the service. Please check your configuration."

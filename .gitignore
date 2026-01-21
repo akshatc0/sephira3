@@ -43,3 +43,4 @@ out/
 .vscode/
 .cursor/
 daily_equity_happiness_data.csv
+!frontend/lib/

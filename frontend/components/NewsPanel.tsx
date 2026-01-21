@@ -60,8 +60,8 @@ export default function NewsPanel({ isOpen, onClose, news, countries }: NewsPane
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
-                <Newspaper className="w-5 h-5 text-indigo-400" />
+              <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                <Newspaper className="w-5 h-5 text-purple-400" />
               </div>
               <div>
                 <h2 className="text-lg font-medium text-white">Related News</h2>
@@ -103,7 +103,7 @@ export default function NewsPanel({ isOpen, onClose, news, countries }: NewsPane
                 >
                   {/* Source & Time */}
                   <div className="flex items-center justify-between mb-2">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-medium uppercase tracking-wider bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-medium uppercase tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/20">
                       {article.source}
                     </span>
                     {article.published && (
@@ -132,7 +132,7 @@ export default function NewsPanel({ isOpen, onClose, news, countries }: NewsPane
                       href={article.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-[11px] text-indigo-400 hover:text-indigo-300 transition-colors"
+                      className="inline-flex items-center gap-1.5 text-[11px] text-purple-400 hover:text-purple-300 transition-colors"
                     >
                       Read more
                       <ExternalLink className="w-3 h-3" />

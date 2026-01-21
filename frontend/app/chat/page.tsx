@@ -1,37 +1,106 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import ChatInterface from "@/components/ChatInterface";
+import Sidebar from "@/components/Sidebar";
+import { useChatHistory } from "@/lib/useChatHistory";
 
 export default function ChatPage() {
-  return (
-    <main className="min-h-screen h-screen bg-[#0A0D1C] flex flex-col overflow-hidden">
-      {/* Header - fixed width, centered */}
-      <header className="w-full border-b border-white/5">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <span className="text-sm font-medium text-white/60 tracking-wide">SEPHIRA</span>
-          <div className="flex items-center gap-2 text-xs text-white/40">
-            <div className="relative">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <div className="absolute inset-0 w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping opacity-40" />
-            </div>
-            <span>Live</span>
-          </div>
-        </div>
-      </header>
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const [sessionId, setSessionId] = useState<string | undefined>();
 
-      {/* Main Content - Full viewport centering */}
-      <div className="flex-1 w-full flex items-center justify-center min-h-0">
-        <div className="w-full max-w-5xl mx-auto px-6 h-full">
-          <ChatInterface />
-        </div>
-      </div>
+  const {
+    chats,
+    currentChatId,
+    isLoaded,
+    createNewChat,
+    saveChat,
+    loadChat,
+    deleteChat,
+    setCurrentChatId,
+  } = useChatHistory();
+
+  // Load messages when current chat changes
+  useEffect(() => {
+    if (!isLoaded) return;
+    
+    const currentChat = chats.find((c) => c.id === currentChatId);
+    if (currentChat) {
+      setMessages(currentChat.messages);
+    } else {
+      setMessages([]);
+    }
+  }, [currentChatId, chats, isLoaded]);
+
+  // Save messages when they change
+  const handleMessagesChange = useCallback(
+    (newMessages: Array<{ role: "user" | "assistant"; content: string }>) => {
+      setMessages(newMessages);
       
-      {/* Footer - Full width, text centered */}
-      <footer className="w-full border-t border-white/5 py-4">
-        <p className="text-center text-[11px] text-white/25">
-          © {new Date().getFullYear()} Sephira. All rights reserved.
-        </p>
-      </footer>
+      // Auto-create chat on first message if none exists
+      if (newMessages.length > 0) {
+        if (currentChatId) {
+          saveChat(currentChatId, newMessages);
+        } else {
+          const newId = createNewChat();
+          saveChat(newId, newMessages);
+        }
+      }
+    },
+    [currentChatId, saveChat, createNewChat]
+  );
+
+  // Handle new chat
+  const handleNewChat = useCallback(() => {
+    setMessages([]);
+    setSessionId(undefined);
+    setCurrentChatId(null);
+  }, [setCurrentChatId]);
+
+  // Handle select chat
+  const handleSelectChat = useCallback(
+    (chatId: string) => {
+      loadChat(chatId);
+      setSessionId(undefined); // Reset session for loaded chat
+    },
+    [loadChat]
+  );
+
+  // Handle delete chat
+  const handleDeleteChat = useCallback(
+    (chatId: string) => {
+      deleteChat(chatId);
+      if (chatId === currentChatId) {
+        setMessages([]);
+        setSessionId(undefined);
+      }
+    },
+    [deleteChat, currentChatId]
+  );
+
+  return (
+    <main className="h-screen flex overflow-hidden">
+      {/* Sidebar */}
+      <Sidebar
+        chats={chats}
+        currentChatId={currentChatId}
+        onNewChat={handleNewChat}
+        onSelectChat={handleSelectChat}
+        onDeleteChat={handleDeleteChat}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <ChatInterface
+          messages={messages}
+          onMessagesChange={handleMessagesChange}
+          sessionId={sessionId}
+          onSessionIdChange={setSessionId}
+        />
+      </div>
     </main>
   );
 }

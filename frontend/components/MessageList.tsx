@@ -32,7 +32,7 @@ function formatAIResponse(content: string) {
         <ul key={pIndex} className="space-y-2 my-3">
           {lines.filter(line => line.trim()).map((line, lIndex) => (
             <li key={lIndex} className="flex items-start gap-2 text-[15px] leading-relaxed">
-              <span className="text-indigo-400 mt-1.5">•</span>
+              <span className="text-purple-400 mt-1.5">•</span>
               <span>{line.replace(/^[•\-*]\s*/, '')}</span>
             </li>
           ))}
@@ -50,7 +50,7 @@ function formatAIResponse(content: string) {
         <ol key={pIndex} className="space-y-2 my-3">
           {lines.filter(line => line.trim()).map((line, lIndex) => (
             <li key={lIndex} className="flex items-start gap-3 text-[15px] leading-relaxed">
-              <span className="text-indigo-400 font-medium min-w-[20px]">{lIndex + 1}.</span>
+              <span className="text-purple-400 font-medium min-w-[20px]">{lIndex + 1}.</span>
               <span>{line.replace(/^\d+[\.\)]\s*/, '')}</span>
             </li>
           ))}
@@ -93,8 +93,8 @@ export default function MessageList({ messages, loading }: MessageListProps) {
         >
           {/* Assistant Avatar */}
           {message.role === "assistant" && (
-            <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center border border-white/10">
-              <Sparkles className="w-4 h-4 text-indigo-400" />
+            <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 flex items-center justify-center border border-white/10">
+              <Sparkles className="w-4 h-4 text-purple-400" />
             </div>
           )}
           
@@ -129,13 +129,13 @@ export default function MessageList({ messages, loading }: MessageListProps) {
       {/* Loading State */}
       {loading && (
         <div className="flex gap-4 justify-start animate-fade-in">
-          <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center border border-white/10">
-            <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />
+          <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 flex items-center justify-center border border-white/10">
+            <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" />
           </div>
           <div className="flex items-center gap-1.5 px-4 py-3">
-            <div className="w-2 h-2 bg-indigo-400/60 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-            <div className="w-2 h-2 bg-indigo-400/60 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-            <div className="w-2 h-2 bg-indigo-400/60 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+            <div className="w-2 h-2 bg-purple-400/60 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+            <div className="w-2 h-2 bg-purple-400/60 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+            <div className="w-2 h-2 bg-purple-400/60 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
           </div>
         </div>
       )}

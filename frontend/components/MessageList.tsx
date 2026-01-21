@@ -1,3 +1,7 @@
+"use client";
+
+import { Sparkles, User } from "lucide-react";
+
 interface Message {
   role: "user" | "assistant";
   content: string;
@@ -8,37 +12,73 @@ interface MessageListProps {
   loading?: boolean;
 }
 
+// Simple markdown-like formatting for AI responses
+function formatAIResponse(content: string) {
+  // Split by double newlines to get paragraphs
+  const paragraphs = content.split(/\n\n+/);
+  
+  return paragraphs.map((paragraph, pIndex) => {
+    // Check if it's a bullet list
+    const lines = paragraph.split('\n');
+    const isBulletList = lines.every(line => 
+      line.trim().startsWith('•') || 
+      line.trim().startsWith('-') || 
+      line.trim().startsWith('*') ||
+      line.trim() === ''
+    );
+    
+    if (isBulletList && lines.some(line => line.trim())) {
+      return (
+        <ul key={pIndex} className="space-y-2 my-3">
+          {lines.filter(line => line.trim()).map((line, lIndex) => (
+            <li key={lIndex} className="flex items-start gap-2 text-[15px] leading-relaxed">
+              <span className="text-indigo-400 mt-1.5">•</span>
+              <span>{line.replace(/^[•\-*]\s*/, '')}</span>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+    
+    // Check for numbered lists
+    const isNumberedList = lines.every(line => 
+      /^\d+[\.\)]\s/.test(line.trim()) || line.trim() === ''
+    );
+    
+    if (isNumberedList && lines.some(line => line.trim())) {
+      return (
+        <ol key={pIndex} className="space-y-2 my-3">
+          {lines.filter(line => line.trim()).map((line, lIndex) => (
+            <li key={lIndex} className="flex items-start gap-3 text-[15px] leading-relaxed">
+              <span className="text-indigo-400 font-medium min-w-[20px]">{lIndex + 1}.</span>
+              <span>{line.replace(/^\d+[\.\)]\s*/, '')}</span>
+            </li>
+          ))}
+        </ol>
+      );
+    }
+    
+    // Check for headers (lines ending with : that are short)
+    if (paragraph.length < 80 && paragraph.endsWith(':')) {
+      return (
+        <h4 key={pIndex} className="text-sm font-medium text-white/90 mt-4 mb-2 uppercase tracking-wide">
+          {paragraph}
+        </h4>
+      );
+    }
+    
+    // Regular paragraph
+    return (
+      <p key={pIndex} className="text-[15px] leading-relaxed text-white/80 my-2">
+        {paragraph}
+      </p>
+    );
+  });
+}
+
 export default function MessageList({ messages, loading }: MessageListProps) {
   if (messages.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-8 opacity-60">
-        <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-6 ring-1 ring-white/10">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-white/80">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-          </svg>
-        </div>
-        <h3 className="text-xl font-medium text-white mb-2" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>Start a Conversation</h3>
-        <p className="max-w-sm mb-8 text-sm leading-relaxed" style={{ color: 'rgba(255, 255, 255, 0.62)', fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
-          Ask questions about global sentiment trends, compare countries, or visualize data over time.
-        </p>
-        
-        <div className="grid gap-3 w-full max-w-sm">
-          {[
-            "Show sentiment trends for France",
-            "Compare Germany and Italy",
-            "Visualize US sentiment in 2023"
-          ].map((suggestion, i) => (
-            <div 
-              key={i}
-              className="px-4 py-3 border border-white/20 rounded-xl text-sm text-left hover:bg-white/10 hover:border-white/30 transition-all cursor-pointer select-none"
-              style={{ color: 'rgba(255, 255, 255, 0.62)', fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}
-            >
-              "{suggestion}"
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -46,42 +86,56 @@ export default function MessageList({ messages, loading }: MessageListProps) {
       {messages.map((message, index) => (
         <div
           key={index}
-          className={`flex ${
+          className={`flex gap-4 ${
             message.role === "user" ? "justify-end" : "justify-start"
-          } animate-slide-up`}
+          } animate-fade-in`}
+          style={{ animationDelay: `${index * 50}ms` }}
         >
+          {/* Assistant Avatar */}
+          {message.role === "assistant" && (
+            <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center border border-white/10">
+              <Sparkles className="w-4 h-4 text-indigo-400" />
+            </div>
+          )}
+          
+          {/* Message Bubble */}
           <div
-            className={`max-w-[85%] sm:max-w-[75%] p-5 shadow-sm ${
+            className={`max-w-[85%] sm:max-w-[80%] ${
               message.role === "user"
-                ? "bg-white text-black rounded-tr-sm"
-                : "border border-white/10 text-white rounded-tl-sm"
+                ? "bg-white text-gray-900 rounded-2xl rounded-tr-md px-5 py-3.5"
+                : "text-white/90"
             }`}
-            style={message.role === "assistant" ? {
-              background: 'linear-gradient(to bottom, #121834, #090D20)',
-              borderRadius: '20px',
-              fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif'
-            } : {
-              borderRadius: '20px',
-              fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif'
-            }}
           >
-            <p className="whitespace-pre-wrap text-[15px] leading-relaxed tracking-wide" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
-              {message.content}
-            </p>
+            {message.role === "user" ? (
+              <p className="text-[15px] leading-relaxed">
+                {message.content}
+              </p>
+            ) : (
+              <div className="prose-sm">
+                {formatAIResponse(message.content)}
+              </div>
+            )}
           </div>
+          
+          {/* User Avatar */}
+          {message.role === "user" && (
+            <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center border border-white/10">
+              <User className="w-4 h-4 text-white/60" />
+            </div>
+          )}
         </div>
       ))}
       
+      {/* Loading State */}
       {loading && (
-        <div className="flex justify-start animate-fade-in">
-          <div className="border border-white/10 px-5 py-4 rounded-tl-sm flex items-center gap-2" style={{ 
-            background: 'linear-gradient(to bottom, #121834, #090D20)',
-            borderRadius: '20px',
-            fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif'
-          }}>
-            <div className="w-2 h-2 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-            <div className="w-2 h-2 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-            <div className="w-2 h-2 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+        <div className="flex gap-4 justify-start animate-fade-in">
+          <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center border border-white/10">
+            <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />
+          </div>
+          <div className="flex items-center gap-1.5 px-4 py-3">
+            <div className="w-2 h-2 bg-indigo-400/60 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+            <div className="w-2 h-2 bg-indigo-400/60 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+            <div className="w-2 h-2 bg-indigo-400/60 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
           </div>
         </div>
       )}

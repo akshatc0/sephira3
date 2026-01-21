@@ -12,6 +12,7 @@ from utils.prompt_templates import (
 )
 from utils.query_parser import QueryParser
 from services.guardrail_service import GuardrailService
+from services.news_service import NewsService
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +22,6 @@ class LLMService:
     def __init__(self, data_service: Any, guardrail_service: GuardrailService):
         self.data_service = data_service
         self.guardrail_service = guardrail_service
-        
-        # #region agent log
-        import json, time
-        with open("/Users/tanayj/sephira3/.cursor/debug.log", "a") as f:
-            f.write(json.dumps({"location":"llm_service.py:__init__","message":"LLMService init","data":{"key_length":len(Config.OPENAI_API_KEY),"key_prefix":Config.OPENAI_API_KEY[:20] if len(Config.OPENAI_API_KEY)>20 else Config.OPENAI_API_KEY,"has_key":bool(Config.OPENAI_API_KEY)},"timestamp":time.time()*1000,"sessionId":"debug-session","hypothesisId":"H2"})+"\n")
-        # #endregion
         
         if not Config.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY not configured")
@@ -40,6 +35,12 @@ class LLMService:
         self.system_prompt = get_system_prompt(countries, date_range)
         
         self.query_parser = QueryParser(countries, date_range)
+        
+        # Initialize news service if API key is configured
+        self.news_service = None
+        if Config.NEWS_API_KEY:
+            self.news_service = NewsService(Config.NEWS_API_KEY)
+            logger.info("News service initialized for real-time news context")
     
     def process_query(self, user_query: str, conversation_history: Optional[List[Dict]] = None,
                      session_id: Optional[str] = None) -> Dict[str, Any]:
@@ -73,22 +74,13 @@ class LLMService:
             else:
                 data_summary = self.get_data_summary_for_query(user_query)
             
-            messages = self._prepare_messages(user_query, conversation_history, data_summary)
+            messages = self._prepare_messages(user_query, conversation_history, data_summary, countries)
             
-            # #region agent log
-            import json, time
-            with open("/Users/tanayj/sephira3/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"location":"llm_service.py:process_query:before_api","message":"About to call OpenAI","data":{"model":self.model,"client_key_len":len(self.client.api_key) if hasattr(self.client,'api_key') and self.client.api_key else 0,"msg_count":len(messages)},"timestamp":time.time()*1000,"sessionId":"debug-session","hypothesisId":"H3"})+"\n")
-            # #endregion
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=messages,
                 temperature=self.temperature
             )
-            # #region agent log
-            with open("/Users/tanayj/sephira3/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"location":"llm_service.py:process_query:after_api","message":"OpenAI call succeeded","data":{"has_choices":bool(response.choices),"choice_count":len(response.choices) if response.choices else 0},"timestamp":time.time()*1000,"sessionId":"debug-session","hypothesisId":"H3"})+"\n")
-            # #endregion
             
             if not response.choices or len(response.choices) == 0:
                 raise ValueError("OpenAI API returned no choices")
@@ -115,29 +107,15 @@ class LLMService:
         except openai.RateLimitError:
             logger.error("OpenAI API rate limit exceeded")
             return {
-                "response": "I'm experiencing high demand right now. Please try again in a moment.",
+                "response": "Sephira AI is experiencing high demand right now. Please try again in a moment.",
                 "chart_request": None,
                 "session_id": session_id,
                 "error": "rate_limit"
             }
         except openai.APIError as e:
             logger.error(f"OpenAI API error: {e}")
-            # #region agent log
-            import json, time
-            with open("/Users/tanayj/sephira3/.cursor/debug.log", "a") as f:
-                f.write(json.dumps({"location":"llm_service.py:process_query:APIError","message":"OpenAI API error caught","data":{"error_type":type(e).__name__,"error_str":str(e)[:200],"client_key_len":len(self.client.api_key) if hasattr(self.client,'api_key') and self.client.api_key else 0},"timestamp":time.time()*1000,"sessionId":"debug-session","hypothesisId":"H3"})+"\n")
-            # #endregion
-            error_msg = str(e).lower()
-            if "authentication" in error_msg or "invalid" in error_msg:
-                response_msg = "I'm having trouble connecting to the service. Please check your configuration."
-            elif "timeout" in error_msg or "connection" in error_msg:
-                response_msg = "The request took too long. Please try again with a simpler query."
-            elif "quota" in error_msg or "billing" in error_msg:
-                response_msg = "Service quota exceeded. Please try again later."
-            else:
-                response_msg = "I'm having trouble processing that request right now. Could you try rephrasing your question?"
             return {
-                "response": response_msg,
+                "response": "Sephira AI is temporarily unable to process this request. Please try again or rephrase your question.",
                 "chart_request": None,
                 "session_id": session_id,
                 "error": "api_error"
@@ -145,7 +123,7 @@ class LLMService:
         except Exception as e:
             logger.error(f"Error processing query: {e}")
             return {
-                "response": "I'm having trouble with that request. Could you try rephrasing your question or asking something else?",
+                "response": "Sephira AI encountered an issue processing your request. Could you try rephrasing your question or asking about a different topic?",
                 "chart_request": None,
                 "session_id": session_id,
                 "error": "internal_error"
@@ -200,7 +178,8 @@ class LLMService:
     
     def _prepare_messages(self, user_query: str, 
                          conversation_history: Optional[List[Dict]],
-                         data_summary: str = "") -> List[Dict[str, str]]:
+                         data_summary: str = "",
+                         countries: Optional[List[str]] = None) -> List[Dict[str, str]]:
         messages = [
             {"role": "system", "content": self.system_prompt}
         ]
@@ -215,16 +194,26 @@ class LLMService:
         
         user_message = user_query
         
-        # Include actual data in user message for LLM context
-        if data_summary:
+        # Get current news context if news service is available
+        news_context = ""
+        if self.news_service and countries:
+            try:
+                news_context = self.news_service.get_news_summary(countries)
+                logger.info(f"Added news context for countries: {countries}")
+            except Exception as e:
+                logger.warning(f"Failed to fetch news context: {e}")
+        
+        # Include actual data and news in user message for LLM context
+        if data_summary or news_context:
             user_message = f"""Based on the following actual data from the sentiment dataset, please answer the user's query:
 
 ACTUAL DATA:
 {data_summary}
+{news_context}
 
 USER QUERY: {user_query}
 
-Please provide an accurate analysis based on the actual data provided above. Reference specific values, trends, and patterns from the data when answering."""
+Please provide an accurate analysis based on the actual data provided above. Reference specific values, trends, and patterns from the data when answering. If relevant current news is provided, you may correlate sentiment changes with recent events."""
         
         messages.append({"role": "user", "content": user_message})
         

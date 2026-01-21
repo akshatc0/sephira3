@@ -26,14 +26,7 @@ def _get_env_var(key: str, default: str = "") -> str:
             load_dotenv(dotenv_path=env_path, override=True)
     except ImportError:
         pass
-    value = os.getenv(key, default)
-    # #region agent log
-    if key == "OPENAI_API_KEY":
-        import json
-        with open("/Users/tanayj/sephira3/.cursor/debug.log", "a") as f:
-            f.write(json.dumps({"location":"config.py:_get_env_var","message":"API key loaded","data":{"key_length":len(value),"key_prefix":value[:20] if len(value)>20 else value,"key_suffix":value[-10:] if len(value)>10 else value},"timestamp":__import__('time').time()*1000,"sessionId":"debug-session","hypothesisId":"H1"})+"\n")
-    # #endregion
-    return value
+    return os.getenv(key, default)
 
 
 class Config:
@@ -41,8 +34,11 @@ class Config:
     
     # OpenAI API Configuration
     OPENAI_API_KEY: str = _get_env_var("OPENAI_API_KEY", "")
-    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4")
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o")
     OPENAI_TEMPERATURE: float = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
+    
+    # News API Configuration
+    NEWS_API_KEY: str = os.getenv("NEWS_API_KEY", "")
     
     # Data Configuration
     DATA_CSV_PATH: Path = Path(os.getenv("DATA_CSV_PATH", "all_indexes_beta.csv"))

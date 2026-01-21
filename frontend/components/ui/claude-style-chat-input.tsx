@@ -41,9 +41,9 @@ export const ClaudeChatInput: React.FC<ClaudeChatInputProps> = ({ onSendMessage,
         <div className="relative w-full max-w-2xl mx-auto transition-all duration-300" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
             {/* Main Container */}
             <div className={`
-                flex flex-col items-stretch transition-all duration-200 relative z-10 rounded-[20px] cursor-text border border-white/10 
-                hover:border-white/20 focus-within:border-white/30
-            `} style={{ background: 'linear-gradient(to bottom, #121834, #090D20)' }}>
+                flex flex-col items-stretch transition-all duration-200 relative z-10 rounded-2xl cursor-text border border-white/[0.08]
+                hover:border-white/[0.12] focus-within:border-indigo-500/30 focus-within:shadow-[0_0_0_2px_rgba(99,102,241,0.1)]
+            `} style={{ background: 'linear-gradient(180deg, rgba(18, 24, 52, 0.6) 0%, rgba(9, 13, 32, 0.8) 100%)' }}>
                 <div className="flex flex-col px-5 pt-5 pb-4 gap-3">
                     {/* Input Area */}
                     <div className="relative mb-2">

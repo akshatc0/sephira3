@@ -18,6 +18,7 @@ from services.guardrail_service import GuardrailService
 from services.chart_service import ChartService
 from services.llm_service import LLMService
 from services.activity_tracker import ActivityTracker
+from services.news_service import NewsService
 from utils.validators import (
     validate_chart_request,
     validate_query_length,
@@ -102,6 +103,17 @@ def get_activity_tracker() -> ActivityTracker:
     return activity_tracker
 
 
+# News service instance
+news_service: Optional[NewsService] = None
+
+def get_news_service() -> Optional[NewsService]:
+    """Get or create NewsService instance."""
+    global news_service
+    if news_service is None and Config.NEWS_API_KEY:
+        news_service = NewsService(Config.NEWS_API_KEY)
+    return news_service
+
+
 # Request/Response Models
 class ChatRequest(BaseModel):
     """Chat request model."""
@@ -112,6 +124,15 @@ class ChatRequest(BaseModel):
     )
 
 
+class NewsArticle(BaseModel):
+    """News article model."""
+    title: str = Field(..., description="Article headline")
+    description: Optional[str] = Field(None, description="Article description")
+    source: str = Field(..., description="News source name")
+    published: Optional[str] = Field(None, description="Publication timestamp")
+    url: Optional[str] = Field(None, description="Article URL")
+
+
 class ChatResponse(BaseModel):
     """Chat response model."""
     response: str = Field(..., description="LLM response text")
@@ -119,6 +140,8 @@ class ChatResponse(BaseModel):
     session_id: str = Field(..., description="Session identifier")
     blocked: bool = Field(False, description="Whether query was blocked")
     error: Optional[str] = Field(None, description="Error type if any")
+    news: Optional[List[NewsArticle]] = Field(None, description="Relevant news articles")
+    countries_mentioned: Optional[List[str]] = Field(None, description="Countries mentioned in query")
 
 
 class ChartRequest(BaseModel):
@@ -265,7 +288,8 @@ async def chat(request: ChatRequest):
         if len(sessions[session_id]["history"]) > 20:
             sessions[session_id]["history"] = sessions[session_id]["history"][-20:]
         
-        # Track activity
+        # Track activity and extract countries
+        countries = []
         try:
             tracker = get_activity_tracker()
             ds = get_data_service()
@@ -291,12 +315,32 @@ async def chat(request: ChatRequest):
         except Exception as e:
             logger.warning(f"Failed to track activity: {e}")
         
+        # Fetch relevant news for the frontend
+        news_articles = []
+        try:
+            ns = get_news_service()
+            if ns and countries:
+                for country in countries[:2]:  # Limit to 2 countries
+                    articles = ns.get_news_for_country(country, limit=4)
+                    for article in articles:
+                        news_articles.append(NewsArticle(
+                            title=article.get("title", ""),
+                            description=article.get("description"),
+                            source=article.get("source", ""),
+                            published=article.get("published"),
+                            url=article.get("url")
+                        ))
+        except Exception as e:
+            logger.warning(f"Failed to fetch news for frontend: {e}")
+        
         return ChatResponse(
             response=result["response"],
             chart_request=result.get("chart_request"),
             session_id=session_id,
             blocked=result.get("blocked", False),
-            error=result.get("error")
+            error=result.get("error"),
+            news=news_articles if news_articles else None,
+            countries_mentioned=countries if countries else None
         )
         
     except HTTPException:

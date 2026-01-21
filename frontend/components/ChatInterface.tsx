@@ -2,12 +2,13 @@
 
 import { useState, useRef, useEffect } from "react";
 import { sendChatMessage, generateChart } from "@/lib/api";
-import type { ChatRequest, ChartRequest } from "@/lib/api";
+import type { ChatRequest, ChartRequest, NewsArticle } from "@/lib/api";
 import MessageList from "./MessageList";
 import ChartDisplay from "./ChartDisplay";
+import NewsPanel from "./NewsPanel";
 import ClaudeChatInput from "@/components/ui/claude-style-chat-input";
 import { cn } from "@/lib/utils";
-import { BarChart3, Globe2, TrendingUp, Activity } from "lucide-react";
+import { BarChart3, Globe2, TrendingUp, Activity, Newspaper, Sparkles } from "lucide-react";
 
 export default function ChatInterface() {
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
@@ -15,6 +16,9 @@ export default function ChatInterface() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentChart, setCurrentChart] = useState<string | null>(null);
+  const [newsOpen, setNewsOpen] = useState(false);
+  const [currentNews, setCurrentNews] = useState<NewsArticle[]>([]);
+  const [currentCountries, setCurrentCountries] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom on new message
@@ -27,6 +31,7 @@ export default function ChatInterface() {
 
     setError(null);
     setLoading(true);
+    setCurrentChart(null);
 
     // Add user message to UI
     setMessages((prev) => [...prev, { role: "user", content: message }]);
@@ -56,6 +61,12 @@ export default function ChatInterface() {
         setSessionId(response.session_id);
       }
 
+      // Update news
+      if (response.news && response.news.length > 0) {
+        setCurrentNews(response.news);
+        setCurrentCountries(response.countries_mentioned || []);
+      }
+
       // Add assistant response
       if (response.response) {
         setMessages((prev) => [
@@ -65,7 +76,7 @@ export default function ChatInterface() {
       } else {
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: "I'm having trouble with that request. Could you try rephrasing your question?" },
+          { role: "assistant", content: "Sephira AI is processing your request. Please try again." },
         ]);
       }
 
@@ -94,12 +105,12 @@ export default function ChatInterface() {
       const errorMessage = err instanceof Error ? err.message : "Connection error";
       
       if (errorMessage.includes("fetch") || errorMessage.includes("network") || errorMessage.includes("Failed to fetch")) {
-        setError("Unable to connect to the server.");
+        setError("Unable to connect to Sephira AI.");
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: "I'm having trouble connecting right now. Please check your internet connection.",
+            content: "Sephira AI is having trouble connecting right now. Please check your internet connection and try again.",
           },
         ]);
       } else {
@@ -108,7 +119,7 @@ export default function ChatInterface() {
           ...prev,
           {
             role: "assistant",
-            content: "I'm having trouble processing that request. Could you try rephrasing?",
+            content: "Sephira AI encountered an issue processing that request. Could you try rephrasing your question?",
           },
         ]);
       }
@@ -119,92 +130,134 @@ export default function ChatInterface() {
 
   // Determine Layout State
   const isChatStarted = messages.length > 0;
+  const hasNews = currentNews.length > 0;
 
   return (
-    <div className="flex flex-col h-full rounded-[20px] border border-white/10 overflow-hidden relative" style={{ 
-      background: 'linear-gradient(to bottom, #121834, #090D20)',
-      fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif'
-    }}>
-      
-      {/* Messages Area */}
-      <div className={cn(
-          "flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-all duration-500",
-          isChatStarted ? "p-10 md:p-12 opacity-100" : "p-0 opacity-0 hidden"
-      )}>
-        <div className="max-w-4xl mx-auto">
-          <MessageList messages={messages} loading={loading} />
-          {currentChart && (
-              <div className="mt-8 animate-fade-in">
-                  <ChartDisplay base64Image={currentChart} />
+    <>
+      <div className="flex flex-col h-full rounded-[24px] border border-white/[0.08] overflow-hidden relative" style={{ 
+        background: 'linear-gradient(180deg, rgba(18, 24, 52, 0.8) 0%, rgba(9, 13, 32, 0.95) 100%)',
+        boxShadow: '0 0 0 1px rgba(255,255,255,0.03), 0 20px 50px -20px rgba(0,0,0,0.5)',
+      }}>
+        
+        {/* Header - Only show when chat is active */}
+        {isChatStarted && (
+          <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center border border-white/10">
+                <Sparkles className="w-4 h-4 text-indigo-400" />
               </div>
-          )}
-          {error && (
-            <div className="my-6 p-4 border border-red-500/20 rounded-[20px] text-red-400 text-sm text-center" style={{ 
-              background: 'linear-gradient(to bottom, #121834, #090D20)',
-              fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif'
-            }}>
-              {error}
+              <div>
+                <h1 className="text-sm font-medium text-white">Sephira AI</h1>
+                <p className="text-[10px] text-white/40">Sentiment Analysis Assistant</p>
+              </div>
             </div>
-          )}
+            
+            {/* News Toggle Button */}
+            {hasNews && (
+              <button
+                onClick={() => setNewsOpen(true)}
+                className="relative flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/10 transition-all duration-200 group"
+              >
+                <Newspaper className="w-4 h-4 text-indigo-400" />
+                <span className="text-xs text-white/60 group-hover:text-white/80 transition-colors">News</span>
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-indigo-500/20 text-[10px] font-medium text-indigo-400">
+                  {currentNews.length}
+                </span>
+              </button>
+            )}
+          </div>
+        )}
+        
+        {/* Messages Area */}
+        <div className={cn(
+            "flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent transition-all duration-500",
+            isChatStarted ? "p-6 md:p-8 opacity-100" : "p-0 opacity-0 hidden"
+        )}>
+          <div className="max-w-3xl mx-auto">
+            <MessageList messages={messages} loading={loading} />
+            {currentChart && (
+                <div className="mt-6 animate-fade-in">
+                    <ChartDisplay base64Image={currentChart} />
+                </div>
+            )}
+            {error && (
+              <div className="my-4 p-4 border border-red-500/20 rounded-2xl text-red-400 text-sm text-center bg-red-500/5">
+                {error}
+              </div>
+            )}
+          </div>
+          <div ref={messagesEndRef} />
         </div>
-        <div ref={messagesEndRef} />
-      </div>
 
-      {/* Greeting View (Centered when empty) */}
-      {!isChatStarted && (
-         <div className="absolute inset-0 flex flex-col items-center justify-center p-8 md:p-12 animate-fade-in z-0">
-            {/* Logo/Greeting */}
-            <div className="w-full max-w-3xl mb-16 md:mb-20 text-center">
-                <h1 className="text-4xl md:text-5xl font-medium text-white tracking-tight mb-2" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
-                    Sephira 0.0.1
-                </h1>
-            </div>
+        {/* Greeting View (Centered when empty) */}
+        {!isChatStarted && (
+           <div className="absolute inset-0 flex flex-col items-center justify-center p-8 md:p-12 animate-fade-in z-0">
+              {/* Logo/Greeting */}
+              <div className="w-full max-w-3xl mb-12 md:mb-16 text-center">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-white/10 mb-6">
+                    <Sparkles className="w-8 h-8 text-indigo-400" />
+                  </div>
+                  <h1 className="text-4xl md:text-5xl font-medium text-white tracking-tight mb-3">
+                      Sephira AI
+                  </h1>
+                  <p className="text-base text-white/40">
+                      Global sentiment intelligence, powered by AI
+                  </p>
+              </div>
 
-            {/* Centered Input */}
-            <div className="w-full max-w-2xl mb-8 md:mb-10">
-                <ClaudeChatInput onSendMessage={handleSend} isLoading={loading} />
-            </div>
+              {/* Centered Input */}
+              <div className="w-full max-w-2xl mb-6 md:mb-8">
+                  <ClaudeChatInput onSendMessage={handleSend} isLoading={loading} />
+              </div>
 
-            {/* Info Text */}
-            <div className="w-full max-w-2xl mb-12 md:mb-14 text-center">
-                <p className="text-sm font-light" style={{ color: 'rgba(255, 255, 255, 0.62)', fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
-                    AI-generated insights based on 20,362 rows of sentiment data.
-                </p>
-            </div>
+              {/* Info Text */}
+              <div className="w-full max-w-2xl mb-10 md:mb-12 text-center">
+                  <p className="text-sm text-white/30">
+                      Analyzing 20,362 data points across 32 countries • Real-time news integration
+                  </p>
+              </div>
 
-            {/* Suggestions */}
-            <div className="flex flex-wrap justify-center gap-4 max-w-2xl mx-auto px-4">
-                {[
-                    { text: "Analyze Sentiment", icon: BarChart3, prompt: "Analyze global sentiment trends" },
-                    { text: "Compare Regions", icon: Globe2, prompt: "Compare sentiment between US and China" },
-                    { text: "Show Trends", icon: TrendingUp, prompt: "Show me the latest sentiment trends" },
-                    { text: "Explain Volatility", icon: Activity, prompt: "Explain recent volatility in sentiment" }
-                ].map((item, i) => (
-                    <button 
-                        key={i}
-                        onClick={() => handleSend(item.prompt)}
-                        className="inline-flex items-center gap-2.5 px-5 py-2.5 text-sm text-white bg-transparent border border-white/20 rounded-full hover:bg-white/10 hover:border-white/30 transition-all duration-200"
-                        style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}
-                    >
-                        <item.icon className="w-4 h-4" />
-                        {item.text}
-                    </button>
-                ))}
-            </div>
-         </div>
-      )}
-
-      {/* Fixed Input Area (Only when chat started) */}
-      {isChatStarted && (
-        <div className="p-8 border-t border-white/10 z-10" style={{ background: '#090D20' }}>
-           <div className="max-w-3xl mx-auto w-full">
-               <ClaudeChatInput onSendMessage={handleSend} isLoading={loading} />
+              {/* Suggestions */}
+              <div className="flex flex-wrap justify-center gap-3 max-w-2xl mx-auto px-4">
+                  {[
+                      { text: "Analyze Sentiment", icon: BarChart3, prompt: "Analyze global sentiment trends for the United States" },
+                      { text: "Compare Regions", icon: Globe2, prompt: "Compare sentiment between Germany and France" },
+                      { text: "Show Trends", icon: TrendingUp, prompt: "Show me sentiment trends for China over the last year" },
+                      { text: "Explain Changes", icon: Activity, prompt: "Explain recent changes in UK sentiment" }
+                  ].map((item, i) => (
+                      <button 
+                          key={i}
+                          onClick={() => handleSend(item.prompt)}
+                          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm text-white/70 bg-white/[0.03] border border-white/[0.08] rounded-full hover:bg-white/[0.06] hover:border-white/15 hover:text-white transition-all duration-200"
+                      >
+                          <item.icon className="w-4 h-4 text-indigo-400/70" />
+                          {item.text}
+                      </button>
+                  ))}
+              </div>
            </div>
-           <p className="text-center text-xs mt-6 font-light" style={{ color: 'rgba(255, 255, 255, 0.3)', fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
-             AI generated responses may vary.
-           </p>
-        </div>
-      )}
-    </div>
+        )}
+
+        {/* Fixed Input Area (Only when chat started) */}
+        {isChatStarted && (
+          <div className="p-6 border-t border-white/[0.06]" style={{ background: 'rgba(9, 13, 32, 0.8)' }}>
+             <div className="max-w-3xl mx-auto w-full">
+                 <ClaudeChatInput onSendMessage={handleSend} isLoading={loading} />
+             </div>
+             <p className="text-center text-[10px] mt-4 text-white/20">
+               Sephira AI • Responses are generated based on sentiment data and current news
+             </p>
+          </div>
+        )}
+      </div>
+      
+      {/* News Panel */}
+      <NewsPanel 
+        isOpen={newsOpen} 
+        onClose={() => setNewsOpen(false)} 
+        news={currentNews}
+        countries={currentCountries}
+      />
+    </>
   );
 }
